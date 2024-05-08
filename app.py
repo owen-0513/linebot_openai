@@ -5,6 +5,8 @@ from linebot.models import *
 import os
 import openai
 import traceback
+import asyncio
+import aiohttp
 
 app = Flask(__name__)
 static_tmp_path = os.path.join(os.path.dirname(__file__), 'static', 'tmp')
@@ -16,20 +18,29 @@ handler = WebhookHandler(os.getenv('CHANNEL_SECRET'))
 # OPENAI API Key初始化設定
 openai.api_key = os.getenv('OPENAI_API_KEY')
 
-def GPT_response(text):
-    # 使用 ChatCompletion 進行對話
-    response = openai.ChatCompletion.create(
-        model="gpt-4",  # 使用 GPT-4 模型
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": text}
-        ],
-        temperature=0.5,
-        max_tokens=500
-    )
-    # 獲取回應
-    answer = response['choices'][0]['message']['content']
-    return answer
+async def GPT_response(text):
+    try:
+        async with aiohttp.ClientSession() as session:
+            headers = {
+                'Authorization': f'Bearer {openai.api_key}',
+                'Content-Type': 'application/json'
+            }
+            json_data = {
+                "model": "gpt-4",
+                "messages": [
+                    {"role": "system", "content": "You are a helpful assistant."},
+                    {"role": "user", "content": text}
+                ],
+                "temperature": 0.5,
+                "max_tokens": 150  # 減少最大token數量
+            }
+            async with session.post('https://api.openai.com/v1/chat/completions', headers=headers, json=json_data) as resp:
+                response = await resp.json()
+                answer = response['choices'][0]['message']['content']
+                return answer
+    except Exception as e:
+        print(f"Error in GPT_response: {str(e)}")
+        return "Owen Test APIKEY沒有付錢"
 
 # 監聽所有來自 /callback 的 Post Request
 @app.route("/callback", methods=['POST'])
@@ -50,8 +61,10 @@ def callback():
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     msg = event.message.text
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     try:
-        GPT_answer = GPT_response(msg)
+        GPT_answer = loop.run_until_complete(GPT_response(msg))
         print(GPT_answer)
         line_bot_api.reply_message(event.reply_token, TextSendMessage(GPT_answer))
     except:
