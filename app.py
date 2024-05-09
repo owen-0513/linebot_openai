@@ -1,14 +1,13 @@
-from flask import Flask, request, abort
+from quart import Quart, request, abort
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import *
 import os
 import openai
 import traceback
-import asyncio
 import aiohttp
 
-app = Flask(__name__)
+app = Quart(__name__)
 static_tmp_path = os.path.join(os.path.dirname(__file__), 'static', 'tmp')
 
 # Channel Access Token
@@ -44,45 +43,43 @@ async def GPT_response(text):
 
 # 監聽所有來自 /callback 的 Post Request
 @app.route("/callback", methods=['POST'])
-def callback():
+async def callback():
     # get X-Line-Signature header value
     signature = request.headers['X-Line-Signature']
     # get request body as text
-    body = request.get_data(as_text=True)
+    body = await request.get_data(as_text=True)
     app.logger.info("Request body: " + body)
     # handle webhook body
     try:
-        handler.handle(body, signature)
+        await handler.handle(body, signature)
     except InvalidSignatureError:
         abort(400)
     return 'OK'
 
 # 處理訊息
 @handler.add(MessageEvent, message=TextMessage)
-def handle_message(event):
+async def handle_message(event):
     msg = event.message.text
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
     try:
-        GPT_answer = loop.run_until_complete(GPT_response(msg))
+        GPT_answer = await GPT_response(msg)
         print(GPT_answer)
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(GPT_answer))
+        await line_bot_api.reply_message(event.reply_token, TextSendMessage(GPT_answer))
     except:
         print(traceback.format_exc())
-        line_bot_api.reply_message(event.reply_token, TextSendMessage('Owen Test APIKEY沒有付錢'))
+        await line_bot_api.reply_message(event.reply_token, TextSendMessage('Owen Test APIKEY沒有付錢'))
 
 @handler.add(PostbackEvent)
-def handle_postback(event):
+async def handle_postback(event):
     print(event.postback.data)
 
 @handler.add(MemberJoinedEvent)
-def welcome(event):
+async def welcome(event):
     uid = event.joined.members[0].user_id
     gid = event.source.group_id
-    profile = line_bot_api.get_group_member_profile(gid, uid)
+    profile = await line_bot_api.get_group_member_profile(gid, uid)
     name = profile.display_name
     message = TextSendMessage(text=f'{name}歡迎加入')
-    line_bot_api.reply_message(event.reply_token, message)
+    await line_bot_api.reply_message(event.reply_token, message)
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
