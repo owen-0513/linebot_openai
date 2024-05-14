@@ -18,8 +18,16 @@ handler = WebhookHandler(os.getenv('CHANNEL_SECRET'))
 # OPENAI API Key初始化設定
 openai.api_key = os.getenv('OPENAI_API_KEY')
 
-async def GPT_response(text):
+#存對話
+user_context = {}
+
+async def GPT_response(user_id, text):
     try:
+        if user_id not in user_context:
+            user_context[user_id] = [{"role": "system", "content": "You are a helpful assistant."}]
+        
+        user_context[user_id].append({"role": "user", "content": text})
+        
         async with aiohttp.ClientSession() as session:
             headers = {
                 'Authorization': f'Bearer {openai.api_key}',
@@ -27,16 +35,14 @@ async def GPT_response(text):
             }
             json_data = {
                 "model": "gpt-4o",
-                "messages": [
-                    {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": text}
-                ],
+                "messages": user_context[user_id],
                 "temperature": 0.5,
                 "max_tokens": 200  # 減少最大token數量
             }
             async with session.post('https://api.openai.com/v1/chat/completions', headers=headers, json=json_data) as resp:
                 response = await resp.json()
                 answer = response['choices'][0]['message']['content']
+                user_context[user_id].append({"role": "assistant", "content": answer})
                 return answer
     except Exception as e:
         print(f"Error in GPT_response: {str(e)}")
@@ -61,10 +67,11 @@ def callback():
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     msg = event.message.text
+    user_id = event.source.user_id
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
-        GPT_answer = loop.run_until_complete(GPT_response(msg))
+        GPT_answer = loop.run_until_complete(GPT_response(user_id, msg))
         print(GPT_answer)
         line_bot_api.reply_message(event.reply_token, TextSendMessage(GPT_answer))
     except:
