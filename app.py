@@ -26,7 +26,7 @@ async def GPT_response(text):
                 'Content-Type': 'application/json'
             }
             json_data = {
-                "model": "gpt-4-turbo-2024-04-09",
+                "model": "gpt-4o",
                 "messages": [
                     {"role": "system", "content": "You are a helpful assistant."},
                     {"role": "user", "content": text}
