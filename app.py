@@ -36,8 +36,8 @@ async def GPT_response(user_id, text):
             json_data = {
                 "model": "gpt-4o",
                 "messages": user_context[user_id],
-                "temperature": 0.5,
-                "max_tokens": 200  # 減少最大token數量
+                "temperature": 0.7,
+                "max_tokens": 300  # 減少最大token數量
             }
             async with session.post('https://api.openai.com/v1/chat/completions', headers=headers, json=json_data) as resp:
                 response = await resp.json()
