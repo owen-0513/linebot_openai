@@ -17,7 +17,8 @@ line_bot_api = LineBotApi(os.getenv('CHANNEL_ACCESS_TOKEN'))
 handler = WebhookHandler(os.getenv('CHANNEL_SECRET'))
 # OPENAI API Key初始化設定
 openai.api_key = os.getenv('OPENAI_API_KEY')
-
+#DC TOKEN
+dc_token = os.getenv('DC_TOKEN')
 #存對話
 user_context = {}
 
@@ -34,7 +35,7 @@ async def GPT_response(user_id, text):
                 'Content-Type': 'application/json'
             }
             json_data = {
-                "model": "gpt-4o",
+                "model": "gpt-4",
                 "messages": user_context[user_id],
                 "temperature": 0.7,
                 "max_tokens": 300  # 減少最大token數量
