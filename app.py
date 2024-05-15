@@ -17,8 +17,6 @@ line_bot_api = LineBotApi(os.getenv('CHANNEL_ACCESS_TOKEN'))
 handler = WebhookHandler(os.getenv('CHANNEL_SECRET'))
 # OPENAI API Key初始化設定
 openai.api_key = os.getenv('OPENAI_API_KEY')
-#DC TOKEN
-dc_token = os.getenv('DC_TOKEN')
 #存對話
 user_context = {}
 
