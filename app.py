@@ -33,7 +33,7 @@ async def GPT_response(user_id, text):
                 'Content-Type': 'application/json'
             }
             json_data = {
-                "model": "gpt-4o",
+                "model": "gpt-4o-2024-05-13",
                 "messages": user_context[user_id],
                 "temperature": 0.7,
                 "max_tokens": 300  # 減少最大token數量
