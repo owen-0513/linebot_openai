@@ -1,4 +1,4 @@
-from flask import Flask, request, abort
+from flask import Flask, request, abort, send_file
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import *
@@ -7,6 +7,7 @@ import openai
 import traceback
 import asyncio
 import aiohttp
+from PIL import Image
 
 app = Flask(__name__)
 static_tmp_path = os.path.join(os.path.dirname(__file__), 'static', 'tmp')
@@ -62,7 +63,7 @@ def callback():
         abort(400)
     return 'OK'
 
-# 處理訊息
+# 處理文字訊息
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     msg = event.message.text
@@ -76,6 +77,62 @@ def handle_message(event):
     except:
         print(traceback.format_exc())
         line_bot_api.reply_message(event.reply_token, TextSendMessage('Owen Test APIKEY沒有付錢'))
+
+# 處理圖片訊息
+@handler.add(MessageEvent, message=ImageMessage)
+def handle_image_message(event):
+    message_content = line_bot_api.get_message_content(event.message.id)
+    image_path = os.path.join(static_tmp_path, f"{event.message.id}.jpg")
+
+    with open(image_path, 'wb') as fd:
+        for chunk in message_content.iter_content():
+            fd.write(chunk)
+    
+    line_bot_api.reply_message(event.reply_token, TextSendMessage("圖片已收到！"))
+    print(f"Image saved at {image_path}")
+
+# 處理影片訊息
+@handler.add(MessageEvent, message=VideoMessage)
+def handle_video_message(event):
+    message_content = line_bot_api.get_message_content(event.message.id)
+    video_path = os.path.join(static_tmp_path, f"{event.message.id}.mp4")
+
+    with open(video_path, 'wb') as fd:
+        for chunk in message_content.iter_content():
+            fd.write(chunk)
+    
+    line_bot_api.reply_message(event.reply_token, TextSendMessage("影片已收到！"))
+    print(f"Video saved at {video_path}")
+
+# 回覆圖片
+@app.route('/send_image', methods=['POST'])
+def send_image():
+    user_id = request.form.get('user_id')
+    image_path = 'path_to_image.jpg'
+    
+    if user_id:
+        line_bot_api.push_message(user_id, ImageSendMessage(
+            original_content_url=f"{request.url_root}static/tmp/{image_path}",
+            preview_image_url=f"{request.url_root}static/tmp/{image_path}"
+        ))
+        return "Image sent!"
+    else:
+        return "User ID not provided", 400
+
+# 回覆影片
+@app.route('/send_video', methods=['POST'])
+def send_video():
+    user_id = request.form.get('user_id')
+    video_path = 'path_to_video.mp4'
+    
+    if user_id:
+        line_bot_api.push_message(user_id, VideoSendMessage(
+            original_content_url=f"{request.url_root}static/tmp/{video_path}",
+            preview_image_url=f"{request.url_root}static/tmp/{video_path}"
+        ))
+        return "Video sent!"
+    else:
+        return "User ID not provided", 400
 
 @handler.add(PostbackEvent)
 def handle_postback(event):
@@ -92,4 +149,6 @@ def welcome(event):
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
+    if not os.path.exists(static_tmp_path):
+        os.makedirs(static_tmp_path)
     app.run(host='0.0.0.0', port=port)
