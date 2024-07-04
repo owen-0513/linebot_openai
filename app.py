@@ -7,6 +7,10 @@ import openai
 import traceback
 import asyncio
 import aiohttp
+import requests
+import schedule
+import time
+from threading import Thread
 
 app = Flask(__name__)
 static_tmp_path = os.path.join(os.path.dirname(__file__), 'static', 'tmp')
@@ -17,7 +21,10 @@ line_bot_api = LineBotApi(os.getenv('CHANNEL_ACCESS_TOKEN'))
 handler = WebhookHandler(os.getenv('CHANNEL_SECRET'))
 # OPENAI API Key初始化設定
 openai.api_key = os.getenv('OPENAI_API_KEY')
-#存對話
+# NewsAPI key
+news_api_key = os.getenv('NEWS_API_KEY')
+
+# 存對話
 user_context = {}
 
 async def GPT_response(user_id, text):
@@ -46,6 +53,37 @@ async def GPT_response(user_id, text):
     except Exception as e:
         print(f"Error in GPT_response: {str(e)}")
         return "Owen Test APIKEY沒有付錢"
+
+async def fetch_news():
+    url = f'https://newsapi.org/v2/top-headlines?country=tw&apiKey={news_api_key}'
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            news_data = await response.json()
+            if news_data['status'] == 'ok':
+                top_articles = news_data['articles'][:5]
+                news_message = '\n'.join([f"{article['title']}: {article['url']}" for article in top_articles])
+                return news_message
+            else:
+                return "目前無法獲取新聞"
+
+def send_daily_news():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        news_message = loop.run_until_complete(fetch_news())
+        line_bot_api.broadcast(TextSendMessage(text=news_message))
+    except:
+        print(traceback.format_exc())
+
+def schedule_news():
+    schedule.every().day.at("13:00").do(send_daily_news)
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
+
+# 啟動排程任務的執行緒
+schedule_thread = Thread(target=schedule_news)
+schedule_thread.start()
 
 # 監聽所有來自 /callback 的 Post Request
 @app.route("/callback", methods=['POST'])
