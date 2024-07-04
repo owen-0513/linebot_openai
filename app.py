@@ -79,8 +79,8 @@ def send_daily_news():
         print(traceback.format_exc())
 
 def schedule_news():
-    #schedule.every().day.at("08:00").do(send_daily_news)
-    schedule.every().minute.do(send_daily_news)
+    schedule.every().day.at("09:00").do(send_daily_news)
+    #schedule.every().minute.do(send_daily_news)
     while True:
         schedule.run_pending()
         time.sleep(1)
@@ -124,6 +124,7 @@ def handle_message(event):
     asyncio.set_event_loop(loop)
     if "新聞" in msg:
         category = None
+        keyword = None
         if "財經" in msg:
             category = "business"
         elif "科技" in msg:
@@ -131,8 +132,16 @@ def handle_message(event):
         elif "遊戲" in msg:
             category = "gaming"
         elif "股票" in msg:
-            category = "stocks"
-        loop.run_until_complete(handle_news_request(event.reply_token, category))
+            keyword = "stocks"
+        elif "運動" in msg:
+            category = "sports"
+        elif "娛樂" in msg:
+            category = "entertainment"
+        elif "健康" in msg:
+            category = "health"
+        elif "科學" in msg:
+            category = "science"
+        loop.run_until_complete(handle_news_request(event.reply_token, category, keyword))
     else:
         loop.run_until_complete(handle_gpt_request(user_id, msg, event.reply_token))
 
