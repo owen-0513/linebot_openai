@@ -70,13 +70,16 @@ def send_daily_news():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
-        news_message = loop.run_until_complete(fetch_news())
+        # 每天推送財經新聞
+        news_message = loop.run_until_complete(fetch_news(category="business"))
         line_bot_api.broadcast(TextSendMessage(text=news_message))
     except:
         print(traceback.format_exc())
 
+
 def schedule_news():
-    schedule.every().day.at("08:00").do(send_daily_news)
+    #schedule.every().day.at("08:00").do(send_daily_news)
+    schedule.every().minute.do(send_daily_news)
     while True:
         schedule.run_pending()
         time.sleep(1)
