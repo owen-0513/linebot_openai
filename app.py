@@ -23,7 +23,7 @@ handler = WebhookHandler(os.getenv('CHANNEL_SECRET'))
 # OPENAI API Key初始化設定
 openai.api_key = os.getenv('OPENAI_API_KEY')
 # NewsAPI key
-news_api_key = os.getenv('NEWS_API_KEY')
+news_api_key = os.getenv('NEWS_API_KEY_2')
 
 # 存對話
 user_context = {}
