@@ -78,13 +78,15 @@ def send_daily_news():
         # 每天推送財經新聞
         news_message = loop.run_until_complete(fetch_news(category="business"))
         if news_message:
-            image_messages = [
-                ImageSendMessage(
-                    original_content_url=article['urlToImage'],
-                    preview_image_url=article['urlToImage']
+            columns = [
+                ImageCarouselColumn(
+                    image_url=article['urlToImage'],
+                    action=URIAction(uri=article['url'], label=article['title'][:12] + '...')
                 ) for article in news_message
             ]
-            line_bot_api.broadcast(image_messages)
+            image_carousel_template = ImageCarouselTemplate(columns=columns)
+            template_message = TemplateSendMessage(alt_text='財經新聞', template=image_carousel_template)
+            line_bot_api.broadcast(template_message)
         else:
             line_bot_api.broadcast(TextSendMessage(text='目前無法獲取新聞'))
     except:
@@ -128,13 +130,15 @@ async def handle_news_request(reply_token, category=None):
     try:
         news_message = await fetch_news(category)
         if news_message:
-            image_messages = [
-                ImageSendMessage(
-                    original_content_url=article['urlToImage'],
-                    preview_image_url=article['urlToImage']
+            columns = [
+                ImageCarouselColumn(
+                    image_url=article['urlToImage'],
+                    action=URIAction(uri=article['url'], label=article['title'][:12] + '...')
                 ) for article in news_message
             ]
-            line_bot_api.reply_message(reply_token, image_messages)
+            image_carousel_template = ImageCarouselTemplate(columns=columns)
+            template_message = TemplateSendMessage(alt_text='新聞', template=image_carousel_template)
+            line_bot_api.reply_message(reply_token, template_message)
         else:
             line_bot_api.reply_message(reply_token, TextSendMessage('目前無法獲取新聞'))
     except:
