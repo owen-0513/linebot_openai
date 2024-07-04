@@ -78,7 +78,7 @@ def send_daily_news():
     asyncio.set_event_loop(loop)
     try:
         # 每天推送財經新聞
-        news_message = loop.run_until_complete(fetch_news(category="bitcoin"))
+        news_message = loop.run_until_complete(fetch_news(category="business"))
         line_bot_api.broadcast(TextSendMessage(text=news_message))
     except:
         print(traceback.format_exc())
