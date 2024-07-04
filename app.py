@@ -64,13 +64,20 @@ def add_todo_item(user_id, time, message):
 
 def parse_and_add_todo_message(user_id, text):
     match = re.match(r'我在 (\d{1,2}:\d{2}) 有 (.+)', text)
+    if not match:
+        match = re.match(r'等等通知我 (.+)', text)
+        if match:
+            message = match.group(1)
+            default_time = (datetime.datetime.now() + datetime.timedelta(minutes=5)).strftime("%H:%M")
+            add_todo_item(user_id, default_time, message)
+            return f"已添加待辦事項：{default_time} - {message}"
     if match:
         time_str = match.group(1)
         message = match.group(2)
         add_todo_item(user_id, time_str, message)
         return f"已添加待辦事項：{time_str} - {message}"
     else:
-        return "無法解析您的待辦事項，請使用格式 '我在 HH:MM 有 XXX'"
+        return "無法解析您的待辦事項，請使用格式 '我在 HH:MM 有 XXX' 或 '等等通知我 XXX'"
 
 def check_todos():
     now = datetime.datetime.now().strftime("%H:%M")
