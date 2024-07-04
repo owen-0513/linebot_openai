@@ -55,32 +55,37 @@ async def GPT_response(user_id, text):
         print(f"Error in GPT_response: {str(e)}")
         return "Owen Test APIKEY沒有付錢"
 
-async def fetch_bitcoin_news():
+async def fetch_news(category=None, keyword=None):
     today = datetime.now().strftime('%Y-%m-%d')
-    url = f'https://newsapi.org/v2/everything?q=bitcoin&from={today}&to={today}&apiKey={news_api_key}'
+    if keyword:
+        url = f'https://newsapi.org/v2/everything?q={keyword}&from={today}&to={today}&apiKey={news_api_key}'
+    else:
+        url = f'https://newsapi.org/v2/top-headlines?country=tw&from={today}&to={today}&apiKey={news_api_key}'
+        if category:
+            url += f'&category={category}'
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
             news_data = await response.json()
             if news_data['status'] == 'ok':
-                top_articles = news_data['articles'][:5]  # 取得前5篇文章
+                top_articles = news_data['articles'][:5]
                 news_message = '\n'.join([f"{article['title']}: {article['url']}" for article in top_articles])
                 return news_message
             else:
-                return "目前無法獲取比特幣新聞"
+                return "目前無法獲取新聞"
 
-
-def send_bitcoin_news():
+def send_daily_news():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
-        news_message = loop.run_until_complete(fetch_bitcoin_news())
+        # 每天推送財經新聞
+        news_message = loop.run_until_complete(fetch_news(category="business"))
         line_bot_api.broadcast(TextSendMessage(text=news_message))
-    except Exception as e:
-        print(f"推送比特幣新聞時出錯: {str(e)}")
-
+    except:
+        print(traceback.format_exc())
 
 def schedule_news():
-    schedule.every().minute.do(send_bitcoin_news)
+    #schedule.every().day.at("09:00").do(send_daily_news)
+    schedule.every().minute.do(send_daily_news)
     while True:
         schedule.run_pending()
         time.sleep(1)
