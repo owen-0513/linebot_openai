@@ -11,6 +11,7 @@ import requests
 import schedule
 import time
 from threading import Thread
+from datetime import datetime
 
 app = Flask(__name__)
 static_tmp_path = os.path.join(os.path.dirname(__file__), 'static', 'tmp')
@@ -55,10 +56,11 @@ async def GPT_response(user_id, text):
         return "Owen Test APIKEY沒有付錢"
 
 async def fetch_news(category=None, keyword=None):
+    today = datetime.now().strftime('%Y-%m-%d')
     if keyword:
-        url = f'https://newsapi.org/v2/everything?q={keyword}&apiKey={news_api_key}'
+        url = f'https://newsapi.org/v2/everything?q={keyword}&from={today}&to={today}&apiKey={news_api_key}'
     else:
-        url = f'https://newsapi.org/v2/top-headlines?country=tw&apiKey={news_api_key}'
+        url = f'https://newsapi.org/v2/top-headlines?country=tw&from={today}&to={today}&apiKey={news_api_key}'
         if category:
             url += f'&category={category}'
     async with aiohttp.ClientSession() as session:
@@ -76,14 +78,14 @@ def send_daily_news():
     asyncio.set_event_loop(loop)
     try:
         # 每天推送財經新聞
-        news_message = loop.run_until_complete(fetch_news(category="business"))
+        news_message = loop.run_until_complete(fetch_news(category="bitcoin"))
         line_bot_api.broadcast(TextSendMessage(text=news_message))
     except:
         print(traceback.format_exc())
 
 def schedule_news():
-    schedule.every().day.at("09:00").do(send_daily_news)
-    #schedule.every().minute.do(send_daily_news)
+    #schedule.every().day.at("09:00").do(send_daily_news)
+    schedule.every().minute.do(send_daily_news)
     while True:
         schedule.run_pending()
         time.sleep(1)
@@ -136,6 +138,14 @@ def handle_message(event):
             category = "gaming"
         elif "股票" in msg:
             keyword = "stocks"
+        elif "台股" in msg:
+            keyword = "台股"
+        elif "美股" in msg:
+            keyword = "美股"
+        elif "比特幣" in msg:
+            keyword = "bitcoin"
+        elif "乙太坊" in msg:
+            keyword = "ethereum"
         elif "運動" in msg:
             category = "sports"
         elif "娛樂" in msg:
@@ -147,7 +157,6 @@ def handle_message(event):
         loop.run_until_complete(handle_news_request(event.reply_token, category, keyword))
     else:
         loop.run_until_complete(handle_gpt_request(user_id, msg, event.reply_token))
-
 @handler.add(PostbackEvent)
 def handle_postback(event):
     print(event.postback.data)
