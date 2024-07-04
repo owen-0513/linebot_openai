@@ -136,6 +136,7 @@ async def handle_news_request(reply_token, category=None):
                     action=URIAction(uri=article['url'], label=article['title'][:12] + '...')
                 ) for article in news_message
             ]
+            # news 
             image_carousel_template = ImageCarouselTemplate(columns=columns)
             template_message = TemplateSendMessage(alt_text='新聞', template=image_carousel_template)
             line_bot_api.reply_message(reply_token, template_message)
