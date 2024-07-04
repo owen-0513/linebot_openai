@@ -63,18 +63,30 @@ async def fetch_news(category=None):
             news_data = await response.json()
             if news_data['status'] == 'ok':
                 top_articles = news_data['articles'][:5]
-                news_message = '\n'.join([f"{article['title']}: {article['url']}" for article in top_articles])
+                news_message = [
+                    {"title": article['title'], "url": article['url'], "urlToImage": article['urlToImage']}
+                    for article in top_articles if article['urlToImage']
+                ]
                 return news_message
             else:
-                return "目前無法獲取新聞"
-
+                return []
+                
 def send_daily_news():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
         # 每天推送財經新聞
         news_message = loop.run_until_complete(fetch_news(category="business"))
-        line_bot_api.broadcast(TextSendMessage(text=news_message))
+        if news_message:
+            image_messages = [
+                ImageSendMessage(
+                    original_content_url=article['urlToImage'],
+                    preview_image_url=article['urlToImage']
+                ) for article in news_message
+            ]
+            line_bot_api.broadcast(image_messages)
+        else:
+            line_bot_api.broadcast(TextSendMessage(text='目前無法獲取新聞'))
     except:
         print(traceback.format_exc())
 
@@ -115,7 +127,16 @@ async def handle_gpt_request(user_id, msg, reply_token):
 async def handle_news_request(reply_token, category=None):
     try:
         news_message = await fetch_news(category)
-        line_bot_api.reply_message(reply_token, TextSendMessage(text=news_message))
+        if news_message:
+            image_messages = [
+                ImageSendMessage(
+                    original_content_url=article['urlToImage'],
+                    preview_image_url=article['urlToImage']
+                ) for article in news_message
+            ]
+            line_bot_api.reply_message(reply_token, image_messages)
+        else:
+            line_bot_api.reply_message(reply_token, TextSendMessage('目前無法獲取新聞'))
     except:
         print(traceback.format_exc())
         line_bot_api.reply_message(reply_token, TextSendMessage('目前無法獲取新聞'))
