@@ -100,20 +100,33 @@ def callback():
         abort(400)
     return 'OK'
 
-# 處理訊息
+async def handle_gpt_request(user_id, msg, reply_token):
+    try:
+        GPT_answer = await GPT_response(user_id, msg)
+        line_bot_api.reply_message(reply_token, TextSendMessage(GPT_answer))
+    except:
+        print(traceback.format_exc())
+        line_bot_api.reply_message(reply_token, TextSendMessage('Owen Test APIKEY沒有付錢'))
+
+async def handle_news_request(reply_token):
+    try:
+        news_message = await fetch_news()
+        line_bot_api.reply_message(reply_token, TextSendMessage(text=news_message))
+    except:
+        print(traceback.format_exc())
+        line_bot_api.reply_message(reply_token, TextSendMessage('目前無法獲取新聞'))
+
+# 處理訊息如果有輸入新聞要能自動抓取新聞資訊
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     msg = event.message.text
     user_id = event.source.user_id
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    try:
-        GPT_answer = loop.run_until_complete(GPT_response(user_id, msg))
-        print(GPT_answer)
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(GPT_answer))
-    except:
-        print(traceback.format_exc())
-        line_bot_api.reply_message(event.reply_token, TextSendMessage('Owen Test APIKEY沒有付錢'))
+    if "新聞" in msg:
+        loop.run_until_complete(handle_news_request(event.reply_token))
+    else:
+        loop.run_until_complete(handle_gpt_request(user_id, msg, event.reply_token))
 
 @handler.add(PostbackEvent)
 def handle_postback(event):
