@@ -134,7 +134,6 @@ def handle_message(event):
             category = "gaming"
         elif "股票" in msg:
             category = "stocks"
-        # 添加更多類別處理邏輯
         loop.run_until_complete(handle_news_request(event.reply_token, category))
     else:
         loop.run_until_complete(handle_gpt_request(user_id, msg, event.reply_token))
