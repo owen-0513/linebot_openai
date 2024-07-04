@@ -54,8 +54,10 @@ async def GPT_response(user_id, text):
         print(f"Error in GPT_response: {str(e)}")
         return "Owen Test APIKEY沒有付錢"
 
-async def fetch_news():
+async def fetch_news(category=None):
     url = f'https://newsapi.org/v2/top-headlines?country=tw&apiKey={news_api_key}'
+    if category:
+        url += f'&category={category}'
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
             news_data = await response.json()
@@ -76,9 +78,8 @@ def send_daily_news():
     except:
         print(traceback.format_exc())
 
-
 def schedule_news():
-    #schedule.every().day.at("08:00").do(send_daily_news)
+    # 每分鐘執行一次
     schedule.every().minute.do(send_daily_news)
     while True:
         schedule.run_pending()
@@ -111,9 +112,9 @@ async def handle_gpt_request(user_id, msg, reply_token):
         print(traceback.format_exc())
         line_bot_api.reply_message(reply_token, TextSendMessage('Owen Test APIKEY沒有付錢'))
 
-async def handle_news_request(reply_token):
+async def handle_news_request(reply_token, category=None):
     try:
-        news_message = await fetch_news()
+        news_message = await fetch_news(category)
         line_bot_api.reply_message(reply_token, TextSendMessage(text=news_message))
     except:
         print(traceback.format_exc())
