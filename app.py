@@ -10,6 +10,8 @@ import aiohttp
 import requests
 import schedule
 import time
+import datetime
+import re
 from threading import Thread
 
 app = Flask(__name__)
@@ -26,6 +28,7 @@ news_api_key = os.getenv('NEWS_API_KEY')
 
 # 存對話
 user_context = {}
+user_todos = {}
 
 async def GPT_response(user_id, text):
     try:
@@ -54,35 +57,43 @@ async def GPT_response(user_id, text):
         print(f"Error in GPT_response: {str(e)}")
         return "Owen Test APIKEY沒有付錢"
 
-async def fetch_news():
-    url = f'https://newsapi.org/v2/top-headlines?country=tw&apiKey={news_api_key}'
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            news_data = await response.json()
-            if news_data['status'] == 'ok':
-                top_articles = news_data['articles'][:5]
-                news_message = '\n'.join([f"{article['title']}: {article['url']}" for article in top_articles])
-                return news_message
-            else:
-                return "目前無法獲取新聞"
+def add_todo_item(user_id, time, message):
+    if user_id not in user_todos:
+        user_todos[user_id] = []
+    user_todos[user_id].append({"time": time, "message": message})
 
-def send_daily_news():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+def parse_and_add_todo_message(user_id, text):
+    match = re.match(r'我在 (\d{1,2}:\d{2}) 有 (.+)', text)
+    if match:
+        time_str = match.group(1)
+        message = match.group(2)
+        add_todo_item(user_id, time_str, message)
+        return f"已添加待辦事項：{time_str} - {message}"
+    else:
+        return "無法解析您的待辦事項，請使用格式 '我在 HH:MM 有 XXX'"
+
+def check_todos():
+    now = datetime.datetime.now().strftime("%H:%M")
+    for user_id, todos in user_todos.items():
+        for todo in todos:
+            if todo["time"] == now:
+                send_todo_message(user_id, todo["message"])
+                todos.remove(todo)
+
+def send_todo_message(user_id, message):
     try:
-        news_message = loop.run_until_complete(fetch_news())
-        line_bot_api.broadcast(TextSendMessage(text=news_message))
+        line_bot_api.push_message(user_id, TextSendMessage(text=message))
     except:
         print(traceback.format_exc())
 
-def schedule_news():
-    schedule.every().day.at("08:00").do(send_daily_news)
+def schedule_todos():
+    schedule.every(1).minutes.do(check_todos)
     while True:
         schedule.run_pending()
         time.sleep(1)
 
 # 啟動排程任務的執行緒
-schedule_thread = Thread(target=schedule_news)
+schedule_thread = Thread(target=schedule_todos)
 schedule_thread.start()
 
 # 監聽所有來自 /callback 的 Post Request
@@ -105,15 +116,8 @@ def callback():
 def handle_message(event):
     msg = event.message.text
     user_id = event.source.user_id
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    try:
-        GPT_answer = loop.run_until_complete(GPT_response(user_id, msg))
-        print(GPT_answer)
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(GPT_answer))
-    except:
-        print(traceback.format_exc())
-        line_bot_api.reply_message(event.reply_token, TextSendMessage('Owen Test APIKEY沒有付錢'))
+    response = parse_and_add_todo_message(user_id, msg)
+    line_bot_api.reply_message(event.reply_token, TextSendMessage(response))
 
 @handler.add(PostbackEvent)
 def handle_postback(event):
