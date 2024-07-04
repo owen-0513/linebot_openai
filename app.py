@@ -76,10 +76,11 @@ def send_daily_news():
         print(traceback.format_exc())
 
 def schedule_news():
-    schedule.every().day.at("13:00").do(send_daily_news)
+    schedule.every(1).minutes.do(send_daily_news)
     while True:
         schedule.run_pending()
         time.sleep(1)
+
 
 # 啟動排程任務的執行緒
 schedule_thread = Thread(target=schedule_news)
