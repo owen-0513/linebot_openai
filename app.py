@@ -60,17 +60,22 @@ async def fetch_news(category=None):
         url += f'&category={category}'
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
+            if response.status != 200:
+                print(f"Failed to fetch news: {response.status}")
+                return []
             news_data = await response.json()
             if news_data['status'] == 'ok':
                 top_articles = news_data['articles'][:5]
                 news_message = [
                     {"title": article['title'], "url": article['url'], "urlToImage": article['urlToImage']}
-                    for article in top_articles if article['urlToImage']
+                    for article in top_articles if article.get('urlToImage')
                 ]
+                print(f"Fetched news: {news_message}")
                 return news_message
             else:
+                print(f"Failed to fetch news: {news_data['status']}")
                 return []
-                
+
 def send_daily_news():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -89,8 +94,8 @@ def send_daily_news():
             line_bot_api.broadcast(template_message)
         else:
             line_bot_api.broadcast(TextSendMessage(text='目前無法獲取新聞'))
-    except:
-        print(traceback.format_exc())
+    except Exception as e:
+        print(f"Error in send_daily_news: {traceback.format_exc()}")
 
 def schedule_news():
     # 每分鐘執行一次
@@ -122,8 +127,8 @@ async def handle_gpt_request(user_id, msg, reply_token):
     try:
         GPT_answer = await GPT_response(user_id, msg)
         line_bot_api.reply_message(reply_token, TextSendMessage(GPT_answer))
-    except:
-        print(traceback.format_exc())
+    except Exception as e:
+        print(f"Error in handle_gpt_request: {traceback.format_exc()}")
         line_bot_api.reply_message(reply_token, TextSendMessage('Owen Test APIKEY沒有付錢'))
 
 async def handle_news_request(reply_token, category=None):
@@ -136,14 +141,13 @@ async def handle_news_request(reply_token, category=None):
                     action=URIAction(uri=article['url'], label=article['title'][:12] + '...')
                 ) for article in news_message
             ]
-            # news 
             image_carousel_template = ImageCarouselTemplate(columns=columns)
             template_message = TemplateSendMessage(alt_text='新聞', template=image_carousel_template)
             line_bot_api.reply_message(reply_token, template_message)
         else:
             line_bot_api.reply_message(reply_token, TextSendMessage('目前無法獲取新聞'))
-    except:
-        print(traceback.format_exc())
+    except Exception as e:
+        print(f"Error in handle_news_request: {traceback.format_exc()}")
         line_bot_api.reply_message(reply_token, TextSendMessage('目前無法獲取新聞'))
 
 # 處理訊息如果有輸入新聞要能自動抓取新聞資訊
