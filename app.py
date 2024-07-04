@@ -79,8 +79,8 @@ def send_daily_news():
         print(traceback.format_exc())
 
 def schedule_news():
-    # 每天早上8点推送财经新闻
-    schedule.every().day.at("08:00").do(send_daily_news)
+    #schedule.every().day.at("08:00").do(send_daily_news)
+    schedule.every().minute.do(send_daily_news)
     while True:
         schedule.run_pending()
         time.sleep(1)
