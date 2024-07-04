@@ -54,8 +54,10 @@ async def GPT_response(user_id, text):
         print(f"Error in GPT_response: {str(e)}")
         return "Owen Test APIKEY沒有付錢"
 
-async def fetch_news():
+async def fetch_news(category=None):
     url = f'https://newsapi.org/v2/top-headlines?country=tw&apiKey={news_api_key}'
+    if category:
+        url += f'&category={category}'
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
             news_data = await response.json()
@@ -76,27 +78,21 @@ def send_daily_news():
     except:
         print(traceback.format_exc())
 
-
 def schedule_news():
-    #schedule.every().day.at("08:00").do(send_daily_news)
-    schedule.every().minute.do(send_daily_news)
+    # 每天早上8点推送财经新闻
+    schedule.every().day.at("08:00").do(send_daily_news)
     while True:
         schedule.run_pending()
         time.sleep(1)
 
-# 啟動排程任務的執行緒
 schedule_thread = Thread(target=schedule_news)
 schedule_thread.start()
 
-# 監聽所有來自 /callback 的 Post Request
 @app.route("/callback", methods=['POST'])
 def callback():
-    # get X-Line-Signature header value
     signature = request.headers['X-Line-Signature']
-    # get request body as text
     body = request.get_data(as_text=True)
     app.logger.info("Request body: " + body)
-    # handle webhook body
     try:
         handler.handle(body, signature)
     except InvalidSignatureError:
@@ -111,15 +107,15 @@ async def handle_gpt_request(user_id, msg, reply_token):
         print(traceback.format_exc())
         line_bot_api.reply_message(reply_token, TextSendMessage('Owen Test APIKEY沒有付錢'))
 
-async def handle_news_request(reply_token):
+async def handle_news_request(reply_token, category=None):
     try:
-        news_message = await fetch_news()
+        news_message = await fetch_news(category)
         line_bot_api.reply_message(reply_token, TextSendMessage(text=news_message))
     except:
         print(traceback.format_exc())
         line_bot_api.reply_message(reply_token, TextSendMessage('目前無法獲取新聞'))
 
-# 處理訊息如果有輸入新聞要能自動抓取新聞資訊
+
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     msg = event.message.text
@@ -128,7 +124,6 @@ def handle_message(event):
     asyncio.set_event_loop(loop)
     if "新聞" in msg:
         category = None
-        # 判斷消息中是否包含特定的新聞類別
         if "財經" in msg:
             category = "business"
         elif "科技" in msg:
